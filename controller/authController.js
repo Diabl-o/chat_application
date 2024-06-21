@@ -1,7 +1,7 @@
 import userModel from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import transporter from "../config/nodeMailer.js";
+import { transporter, sendMail } from "../config/nodeMailer.js";
 import dotenv from "dotenv";
 import sessionModel from "../models/sessionModel.js";
 
@@ -62,14 +62,7 @@ async function registerUser(req, res) {
       text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
     };
 
-    await transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.log(error);
-        return res.status(500).json({ message: "Error sending email" });
-      } else {
-        console.log(info.response);
-      }
-    });
+    sendMail(mailOptions);
 
     await user.save();
     res.status(201).json({ message: "User registered successfully" });
@@ -134,14 +127,14 @@ async function loginUser(req, res) {
         message: "Email not verified.",
       });
     }
-    const jwtAccessToken = await jwt.sign(
+    const jwtAccessToken = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       {
-        expiresIn: "2m",
+        expiresIn: "1h",
       }
     );
-    const jwtRefreshToken = await jwt.sign(
+    const jwtRefreshToken = jwt.sign(
       { userId: user._id },
       process.env.JWT_REFRESH_SECRET,
       {
@@ -168,7 +161,8 @@ async function loginUser(req, res) {
 }
 //logout
 async function logout(req, res) {
-  const refreshToken = req.body.jwtRefreshToken;
+  const authHeader = req.headers["authorization"];
+  const refreshToken = authHeader && authHeader.split(" ")[1];
   if (refreshToken == null) {
     return res.status(401).json({
       message: "Unauthorized",
@@ -183,5 +177,99 @@ async function logout(req, res) {
       .json({ message: "Server error", error: error.message });
   }
 }
+//send reset password email
+const sendResetPasswordEmail = async (req, res) => {
+  const { email } = req.body;
 
-export { registerUser, checkOtp, loginUser, logout };
+  try {
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const resetToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_RESET_SECRET,
+      { expiresIn: "10m" }
+    );
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const message = `You requested a password reset. Please click the link below to reset your password:\n\n ${resetUrl}\n\nThis link will expire in 10 minutes.`;
+
+    await transporter.sendMail({
+      to: user.email,
+      subject: "Password Reset",
+      text: message,
+    });
+
+    res.status(200).json({ message: "Password reset email sent" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+//reset password
+const resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_RESET_SECRET);
+    const user = await userModel.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    await sessionModel.deleteMany({ userId: user._id });
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    res.status(403).json({
+      message: "Forbidden",
+      error: error.message,
+    });
+  }
+};
+//resend otp
+const resendOtp = async (req, res) => {
+  const { email } = req.body.email;
+  try {
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const otp = generateOtp();
+    const otp_expiry = new Date(Date.now() + 10 * 60 * 1000);
+    user.otp = otp;
+    user.otp_expiry = otp_expiry;
+    user.save();
+    const mailOptions = {
+      from: process.env.Email,
+      to: email,
+      subject: "Verify your email",
+      text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
+    };
+    sendMail(mailOptions);
+    return res.status(200).json({
+      message: "OTP sent successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+export {
+  registerUser,
+  checkOtp,
+  loginUser,
+  logout,
+  sendResetPasswordEmail,
+  resetPassword,
+  resendOtp,
+};

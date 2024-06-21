@@ -20,7 +20,8 @@ async function authenticateToken(req, res, next) {
 }
 
 async function refreshAccessToken(req, res) {
-  const refreshToken = req.body.jwtRefreshToken;
+  const authHeader = req.headers["authorization"];
+  const refreshToken = authHeader && authHeader.split(" ")[1];
   if (refreshToken == null) {
     return res.status(401).json({
       message: "Unauthorized",
@@ -41,7 +42,7 @@ async function refreshAccessToken(req, res) {
     }
 
     const newAccessToken = jwt.sign({ userId }, process.env.JWT_SECRET, {
-      expiresIn: "2m",
+      expiresIn: "1h",
     });
     return res.status(200).json({
       message: "New AccessToken Generated.",
