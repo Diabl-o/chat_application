@@ -3,11 +3,12 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDb from "./config/connectDb.js";
 import router from "./routes/index.js";
+import { app, server } from "./socket/index.js";
 import "./cron/cleanExpiredTokens.js";
 
 dotenv.config();
 const port = process.env.PORT || 5000;
-const app = express();
+// const app = express();
 connectDb();
 app.use(express.json());
 app.use(
@@ -24,4 +25,6 @@ app.get("/", (req, res) => {
 
 app.use("", router);
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+server.listen(port, () =>
+  console.log(`Example app listening on port ${port}!`)
+);

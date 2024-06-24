@@ -19,6 +19,24 @@ async function authenticateToken(req, res, next) {
   });
 }
 
+const verifyJWT = async (socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    const err = new Error("Authentication error");
+    err.data = { message: "No token provided" };
+    return next(err);
+  }
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      const err = new Error("Authentication error");
+      err.data = { message: "Failed to authenticate token" };
+      return next(err);
+    }
+    socket.userId = decoded; // Store user id in socket object
+    next();
+  });
+};
+
 async function refreshAccessToken(req, res) {
   const authHeader = req.headers["authorization"];
   const refreshToken = authHeader && authHeader.split(" ")[1];
@@ -56,4 +74,4 @@ async function refreshAccessToken(req, res) {
   }
 }
 
-export { authenticateToken, refreshAccessToken };
+export { authenticateToken, refreshAccessToken, verifyJWT };

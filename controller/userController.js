@@ -53,11 +53,13 @@ const changePassword = async (req, res) => {
   }
 };
 const updateUser = async (req, res) => {
-  const { name, profile_pic } = req.body;
+  const { name, phone, about, profile_pic } = req.body;
   try {
     const user = await userModel.findById(req.body.userId);
     user.name = name;
     user.profile_pic = profile_pic;
+    user.phone = phone;
+    user.about = about;
     user.save();
     return res.status(200).json({
       message: "User updated successfully",
@@ -69,4 +71,41 @@ const updateUser = async (req, res) => {
     });
   }
 };
-export { profile, changePassword, updateUser };
+const searchUser = async (req, res) => {
+  try {
+    const { search } = req.body;
+    const query = new RegExp(search, "i", "g");
+    const user = await userModel
+      .find({
+        $and: [
+          {
+            $or: [
+              {
+                name: query,
+              },
+              {
+                email: query,
+              },
+              {
+                username: query,
+              },
+            ],
+          },
+          { is_verified: true },
+        ],
+      })
+      .select("-password");
+    return res.status(200).json({
+      message: "Searched user data",
+      data: user,
+      success: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server error",
+      error: error.message,
+      error: true,
+    });
+  }
+};
+export { profile, changePassword, updateUser, searchUser };
