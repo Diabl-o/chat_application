@@ -6,6 +6,7 @@ const router = express.Router();
 
 const path = "/api-v2/";
 
-router.use(path + "auth", authRoute, userRoute); // /api-v2/auth/
+router.use(path + "auth", authRoute); // /api-v2/auth/
+router.use(path, userRoute); // /api-v2/users
 
 export default router;

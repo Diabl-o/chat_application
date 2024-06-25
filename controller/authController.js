@@ -26,7 +26,10 @@ async function registerUser(req, res) {
     password,
   });
   if (error) {
-    return res.status(400).json({ message: error.details[0].message });
+    return res.status(400).json({
+      message: error.details[0].message,
+      error: true,
+    });
   }
   try {
     const checkEmail = await userModel.findOne({ email });
@@ -65,7 +68,10 @@ async function registerUser(req, res) {
     sendMail(mailOptions);
 
     await user.save();
-    res.status(201).json({ message: "User registered successfully" });
+    res.status(201).json({
+      message: "User registered successfully",
+      success: true,
+    });
   } catch (error) {
     res
       .status(500)
@@ -104,7 +110,10 @@ async function loginUser(req, res) {
   const { email, password } = req.body;
   const { error } = loginSchema.validate({ email, password });
   if (error) {
-    return res.status(400).json({ message: error.details[0].message });
+    return res.status(400).json({
+      message: error.details[0].message,
+      error: true,
+    });
   }
   try {
     const user = await userModel.findOne({ email });
@@ -125,6 +134,7 @@ async function loginUser(req, res) {
     if (!verified) {
       return res.status(400).json({
         message: "Email not verified.",
+        error: true,
       });
     }
     const jwtAccessToken = jwt.sign(
@@ -151,6 +161,7 @@ async function loginUser(req, res) {
       message: "Logged in successfully.",
       jwtAccessToken,
       jwtRefreshToken,
+      success: true,
     });
   } catch (error) {
     res.status(500).json({
@@ -170,7 +181,10 @@ async function logout(req, res) {
   }
   try {
     await sessionModel.findOneAndDelete({ jwtRefreshToken: refreshToken });
-    return res.status(200).json({ message: "Logged out successfully" });
+    return res.status(200).json({
+      message: "Logged out successfully",
+      success: true,
+    });
   } catch (error) {
     return res
       .status(500)
@@ -184,7 +198,10 @@ const sendResetPasswordEmail = async (req, res) => {
   try {
     const user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        message: "User not found",
+        error: true,
+      });
     }
 
     const resetToken = jwt.sign(
@@ -202,7 +219,10 @@ const sendResetPasswordEmail = async (req, res) => {
       text: message,
     });
 
-    res.status(200).json({ message: "Password reset email sent" });
+    res.status(200).json({
+      message: "Password reset email sent",
+      success: true,
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -216,7 +236,10 @@ const resetPassword = async (req, res) => {
     const user = await userModel.findById(decoded.userId);
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid or expired token" });
+      return res.status(400).json({
+        message: "Invalid or expired token",
+        error: true,
+      });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -225,7 +248,10 @@ const resetPassword = async (req, res) => {
 
     await sessionModel.deleteMany({ userId: user._id });
 
-    res.status(200).json({ message: "Password reset successfully" });
+    res.status(200).json({
+      message: "Password reset successfully",
+      success: true,
+    });
   } catch (error) {
     res.status(403).json({
       message: "Forbidden",
@@ -239,7 +265,10 @@ const resendOtp = async (req, res) => {
   try {
     const user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        message: "User not found",
+        error: true,
+      });
     }
     const otp = generateOtp();
     const otp_expiry = new Date(Date.now() + 10 * 60 * 1000);
@@ -255,6 +284,7 @@ const resendOtp = async (req, res) => {
     sendMail(mailOptions);
     return res.status(200).json({
       message: "OTP sent successfully",
+      success: true,
     });
   } catch (error) {
     return res.status(500).json({

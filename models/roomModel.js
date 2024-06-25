@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 
-import mongoose from "mongoose";
-
 const roomSchema = new mongoose.Schema(
   {
     room_name: {
