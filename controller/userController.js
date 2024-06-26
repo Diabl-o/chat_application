@@ -2,6 +2,7 @@ import userModel from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import roomModule from "../models/roomModel.js";
+import roomUserModel from "../models/roomUserModel.js";
 
 dotenv.config();
 
@@ -122,7 +123,7 @@ const createRoom = async (req, res) => {
         error: true,
       });
     }
-    const { room_name } = req.body;
+    const { room_name, roomUsers } = req.body;
     const checkRoom = await roomModule.findOne({ room_name });
     if (checkRoom) {
       return res.status(400).json({
@@ -135,6 +136,17 @@ const createRoom = async (req, res) => {
       admin_id: req.userId,
     });
     await room.save();
+
+    const roomUserEntries = [
+      { userId: req.userId, roomId: room._id, isAdmin: true },
+    ];
+
+    roomUsers.forEach((userId) => {
+      roomUserEntries.push({ userId, roomId: room._id });
+    });
+
+    await roomUserModel.insertMany(roomUserEntries);
+
     return res.status(200).json({
       message: "Room Created Successfully.",
       success: true,

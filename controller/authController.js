@@ -47,7 +47,7 @@ async function registerUser(req, res) {
       });
     }
     const otp = generateOtp();
-    const otp_expiry = new Date(Date.now() + 10 * 60 * 1000);
+    const otp_expiry = new Date(Date.now() + 3 * 60 * 1000);
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new userModel({
       name,
@@ -62,7 +62,7 @@ async function registerUser(req, res) {
       from: process.env.Email,
       to: email,
       subject: "Verify your email",
-      text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
+      text: `Your OTP is ${otp}. It will expire in 3 minutes.`,
     };
 
     sendMail(mailOptions);
@@ -271,7 +271,7 @@ const resendOtp = async (req, res) => {
       });
     }
     const otp = generateOtp();
-    const otp_expiry = new Date(Date.now() + 10 * 60 * 1000);
+    const otp_expiry = new Date(Date.now() + 3 * 60 * 1000);
     user.otp = otp;
     user.otp_expiry = otp_expiry;
     user.save();
@@ -279,7 +279,7 @@ const resendOtp = async (req, res) => {
       from: process.env.Email,
       to: email,
       subject: "Verify your email",
-      text: `Your OTP is ${otp}. It will expire in 10 minutes.`,
+      text: `Your OTP is ${otp}. It will expire in 3 minutes.`,
     };
     sendMail(mailOptions);
     return res.status(200).json({
