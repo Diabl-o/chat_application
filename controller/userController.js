@@ -59,16 +59,32 @@ const changePassword = async (req, res) => {
 };
 const updateUser = async (req, res) => {
   const { name, phone, about, profile_pic } = req.body;
+  const updateFields = {};
+
+  // Only include fields that are provided in the request body
+  if (name) updateFields.name = name;
+  if (profile_pic) updateFields.profile_pic = profile_pic;
+  if (phone) updateFields.phone = phone;
+  if (about) updateFields.about = about;
+
   try {
-    const user = await userModel.findById(req.body.userId);
-    user.name = name;
-    user.profile_pic = profile_pic;
-    user.phone = phone;
-    user.about = about;
-    user.save();
+    const updatedUser = await userModel.findByIdAndUpdate(
+      req.userId,
+      { $set: updateFields },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        message: "User not found",
+        error: true,
+      });
+    }
+
     return res.status(200).json({
       message: "User updated successfully",
       success: true,
+      user: updatedUser,
     });
   } catch (error) {
     return res.status(500).json({
@@ -158,4 +174,154 @@ const createRoom = async (req, res) => {
     });
   }
 };
-export { profile, changePassword, updateUser, searchUser, createRoom };
+const addUser = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+        error: true,
+      });
+    }
+    const { roomId, roomUsers } = req.body;
+    const roomUser = await roomUserModel.findOne({
+      userId: req.userId,
+      roomId: roomId,
+      isAdmin: true,
+    });
+
+    if (!roomUser) {
+      return res.status(403).json({
+        message: "You are not an admin of this room",
+        error: true,
+      });
+    }
+    const newUsers = await userModel.find({ _id: { $in: roomUsers } });
+    if (newUsers.length !== roomUsers.length) {
+      return res.status(404).json({
+        message: "One or more users not found",
+        error: true,
+      });
+    }
+    const roomUserEntries = roomUsers.map((userId) => ({
+      userId,
+      roomId,
+      isAdmin: false,
+    }));
+    await roomUserModel.insertMany(roomUserEntries);
+    return res.status(200).json({
+      message: "Users added successfully",
+      success: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+const removeUser = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+        error: true,
+      });
+    }
+    const { roomId, userId } = req.body;
+    const adminCheck = await roomUserModel.findOne({
+      userId: req.userId,
+      roomId: roomId,
+      isAdmin: true,
+    });
+
+    if (!adminCheck) {
+      return res.status(403).json({
+        message: "You are not an admin of this room",
+        error: true,
+      });
+    }
+    const roomUser = await roomUserModel.findOneAndDelete({ roomId, userId });
+    if (!roomUser) {
+      return res.status(404).json({
+        message: "User not found in the room",
+        error: true,
+      });
+    }
+    return res.status(200).json({
+      message: "User removed successfully",
+      success: true,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+const updateRoom = async (req, res) => {
+  try {
+    const user = await userModel.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+        error: true,
+      });
+    }
+
+    const { roomId, roomName, adminUser } = req.body;
+    const adminCheck = await roomUserModel.findOne({
+      userId: req.userId,
+      roomId: roomId,
+      isAdmin: true,
+    });
+
+    if (!adminCheck) {
+      return res.status(403).json({
+        message: "You are not an admin of this room",
+        error: true,
+      });
+    }
+    const room = await roomModule.find({ roomId });
+    if (!room) {
+      return res.status(404).json({
+        message: "Room not found",
+        error: true,
+      });
+    }
+    const updateFields = {};
+    if (roomName) updateFields.room_name = roomName;
+    if (adminUser && mongoose.Types.ObjectId.isValid(adminUser))
+      updateFields.admin_id = adminUser;
+
+    const updatedRoom = await roomModule.findByIdAndUpdate(
+      roomId,
+      { $set: updateFields },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      message: "Room updated successfully",
+      success: true,
+      room: updatedRoom,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export {
+  profile,
+  changePassword,
+  updateUser,
+  searchUser,
+  createRoom,
+  addUser,
+  removeUser,
+  updateRoom,
+};

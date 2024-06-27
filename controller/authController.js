@@ -5,12 +5,6 @@ import { transporter, sendMail } from "../config/nodeMailer.js";
 import dotenv from "dotenv";
 import sessionModel from "../models/sessionModel.js";
 
-import {
-  registerSchema,
-  loginSchema,
-  otpVerifySchema,
-} from "../validation/joivalidation.js";
-
 dotenv.config();
 
 const generateOtp = () => {
@@ -19,18 +13,6 @@ const generateOtp = () => {
 //Register
 async function registerUser(req, res) {
   const { name, username, email, password } = req.body;
-  const { error } = registerSchema.validate({
-    name,
-    username,
-    email,
-    password,
-  });
-  if (error) {
-    return res.status(400).json({
-      message: error.details[0].message,
-      error: true,
-    });
-  }
   try {
     const checkEmail = await userModel.findOne({ email });
     if (checkEmail) {
@@ -81,10 +63,6 @@ async function registerUser(req, res) {
 //VerifyOtp
 async function checkOtp(req, res) {
   const { email, otp } = req.body;
-  const { error } = otpVerifySchema.validate({ email, otp });
-  if (error) {
-    return res.status(400).json({ message: error.details[0].message });
-  }
   try {
     const user = await userModel.findOne({ email });
     if (!user) {
@@ -108,13 +86,6 @@ async function checkOtp(req, res) {
 //Login
 async function loginUser(req, res) {
   const { email, password } = req.body;
-  const { error } = loginSchema.validate({ email, password });
-  if (error) {
-    return res.status(400).json({
-      message: error.details[0].message,
-      error: true,
-    });
-  }
   try {
     const user = await userModel.findOne({ email });
     if (!user) {
@@ -261,7 +232,7 @@ const resetPassword = async (req, res) => {
 };
 //resend otp
 const resendOtp = async (req, res) => {
-  const { email } = req.body.email;
+  const { email } = req.body;
   try {
     const user = await userModel.findOne({ email });
     if (!user) {

@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import sessionModel from "../models/sessionModel.js";
 
-cron.schedule("0 0 * * *", async () => {
+cron.schedule("15 16 * * *", async () => {
   try {
     const result = await sessionModel.deleteMany({
       expiresAt: { $lt: new Date() },
